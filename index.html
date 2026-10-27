@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的記事本</title>
+<meta name="description" content="儲存在 GitHub 私人倉庫中的個人記事本">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <h1>📝 記事本</h1>
+      <button class="btn primary" id="newBtn" title="新增筆記 (Ctrl+N)">＋ 新增</button>
+    </div>
+    <input type="search" id="search" class="search" placeholder="搜尋筆記…" autocomplete="off">
+    <ul class="note-list" id="noteList"></ul>
+    <div class="sidebar-foot">
+      <span class="status" id="status"><span class="dot"></span><span id="statusText">載入中…</span></span>
+      <button class="icon-btn" id="settingsBtn" title="設定 GitHub 同步">⚙️</button>
+    </div>
+  </aside>
+
+  <main class="editor" id="editor">
+    <div class="editor-bar">
+      <button class="icon-btn only-mobile" id="backBtn" title="返回清單">←</button>
+      <input type="text" id="title" class="title-input" placeholder="標題">
+      <button class="icon-btn" id="previewBtn" title="預覽 Markdown">👁</button>
+      <button class="icon-btn danger" id="deleteBtn" title="刪除此筆記">🗑</button>
+    </div>
+    <textarea id="body" class="body-input" placeholder="在這裡輸入內容…支援 Markdown" spellcheck="false"></textarea>
+    <div id="preview" class="preview hidden"></div>
+    <div class="editor-foot">
+      <span id="meta"></span>
+      <span id="count"></span>
+    </div>
+    <div class="empty" id="empty">
+      <p>選擇左側的筆記，或建立一則新筆記。</p>
+    </div>
+  </main>
+</div>
+
+<dialog id="settings" class="dialog">
+  <form method="dialog">
+    <h2>GitHub 同步設定</h2>
+    <p class="muted">筆記會寫入私人倉庫 <code id="repoName"></code> 的 <code>notes/notes.json</code>。
+    網頁本身不含任何筆記內容，需要 Token 才能讀寫。</p>
+    <label for="token">Fine-grained Personal Access Token</label>
+    <input type="password" id="token" autocomplete="off" placeholder="github_pat_…">
+    <details class="help">
+      <summary>如何建立 Token？</summary>
+      <ol>
+        <li>打開 <a id="tokenLink" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → Settings → Developer settings → Fine-grained tokens</a></li>
+        <li>Repository access 選「Only select repositories」，勾選 <b id="repoName2"></b></li>
+        <li>Permissions → Repository permissions → <b>Contents</b> 設為 <b>Read and write</b></li>
+        <li>Generate token，複製貼到上方欄位</li>
+      </ol>
+      <p class="muted">Token 只存在這台瀏覽器的 localStorage，不會上傳到任何地方（除了 GitHub API）。</p>
+    </details>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="testBtn">測試連線</button>
+      <span id="testResult" class="muted"></span>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="clearTokenBtn">清除</button>
+      <button type="submit" class="btn primary" id="saveTokenBtn">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
