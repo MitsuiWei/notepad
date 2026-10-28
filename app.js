@@ -39,8 +39,15 @@
   const setStatus = (cls, text) => { el.status.className = 'status ' + cls; el.statusText.textContent = text; };
   const apiUrl = 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + CFG.path;
   const headers = (tok) => ({ Authorization: 'Bearer ' + (tok || state.token), Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' });
-  const sorted = () => [...state.notes].sort((a, b) => (b.updated > a.updated ? 1 : -1));
+  const byUpdated = (a, b) => (b.updated > a.updated ? 1 : -1);
+  const sorted = () => [...state.notes].sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)) || byUpdated(a, b));
   const current = () => state.notes.find((n) => n.id === state.currentId) || null;
+  // 舊資料沒有 order 欄位時，依更新時間補上（手動排序的起點）
+  function ensureOrder() {
+    if (state.notes.every((n) => typeof n.order === 'number')) return false;
+    [...state.notes].sort(byUpdated).forEach((n, i) => { n.order = i; });
+    return true;
+  }
 
   // ---------- local cache ----------
   function saveLocal() {
@@ -55,6 +62,7 @@
     state.dirty = lsGet(LS.dirty, '0') === '1';
     state.token = lsGet(LS.token, '');
     state.currentId = lsGet(LS.current, null);
+    if (ensureOrder()) { state.dirty = true; saveLocal(); }
   }
 
   // ---------- GitHub sync ----------
@@ -84,6 +92,7 @@
     } else {
       state.notes = remote.notes;
       saveLocal();
+      if (ensureOrder()) schedulePush(500);
     }
   }
   async function pushRemote(retry = true) {
@@ -140,6 +149,7 @@
   function renderList() {
     const q = el.search.value.trim().toLowerCase();
     const items = sorted().filter((n) => !q || (n.title + '\n' + n.body).toLowerCase().includes(q));
+    el.list.classList.toggle('filtered', !!q);
     el.list.innerHTML = '';
     if (!items.length) {
       const li = document.createElement('li'); li.className = 'none';
@@ -151,8 +161,8 @@
       li.dataset.id = n.id;
       if (n.id === state.currentId) li.classList.add('active');
       const snippet = (n.body || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-      li.innerHTML = '<span class="t">' + esc(n.title || '（無標題）') + '</span><span class="s">' + esc(fmt(n.updated)) + (snippet ? ' · ' + esc(snippet) : '') + '</span>';
-      li.addEventListener('click', () => open(n.id));
+      li.innerHTML = '<span class="h" title="拖曳排序">⋮⋮</span><span class="c"><span class="t">' + esc(n.title || '（無標題）') + '</span><span class="s">' + esc(fmt(n.updated)) + (snippet ? ' · ' + esc(snippet) : '') + '</span></span>';
+      li.addEventListener('click', () => { if (!state.suppressClick) open(n.id); });
       el.list.appendChild(li);
     }
   }
@@ -210,7 +220,8 @@
 
   // ---------- actions ----------
   function createNote() {
-    const n = { id: uid(), title: '', body: '', created: now(), updated: now() };
+    const minOrder = state.notes.length ? Math.min(...state.notes.map((x) => x.order ?? 0)) : 1;
+    const n = { id: uid(), title: '', body: '', created: now(), updated: now(), order: minOrder - 1 };
     state.notes.push(n);
     open(n.id);
     el.title.focus();
@@ -238,6 +249,45 @@
     el.preview.classList.toggle('hidden', !state.previewing);
     renderEditor();
   }
+
+  // ---------- 拖曳排序（滑鼠與觸控皆用 Pointer Events） ----------
+  let drag = null;
+  el.list.addEventListener('pointerdown', (e) => {
+    const h = e.target.closest('.h'); if (!h) return;
+    if (el.search.value.trim()) return; // 搜尋中不允許排序
+    const li = h.closest('li[data-id]'); if (!li) return;
+    e.preventDefault();
+    drag = { li, startY: e.clientY, moved: false, pointerId: e.pointerId };
+    try { li.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+  el.list.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag.moved) {
+      if (Math.abs(e.clientY - drag.startY) < 4) return;
+      drag.moved = true; drag.li.classList.add('dragging');
+    }
+    const others = [...el.list.querySelectorAll('li[data-id]')].filter((x) => x !== drag.li);
+    let placed = false;
+    for (const it of others) {
+      const r = it.getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { el.list.insertBefore(drag.li, it); placed = true; break; }
+    }
+    if (!placed) el.list.appendChild(drag.li);
+    const lr = el.list.getBoundingClientRect();
+    if (e.clientY < lr.top + 36) el.list.scrollTop -= 10; else if (e.clientY > lr.bottom - 36) el.list.scrollTop += 10;
+  });
+  const endDrag = (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    drag.li.classList.remove('dragging');
+    if (drag.moved) {
+      [...el.list.querySelectorAll('li[data-id]')].forEach((li, i) => { const n = state.notes.find((x) => x.id === li.dataset.id); if (n) n.order = i; });
+      state.suppressClick = true; setTimeout(() => { state.suppressClick = false; }, 0);
+      schedulePush();
+    }
+    drag = null;
+  };
+  el.list.addEventListener('pointerup', endDrag);
+  el.list.addEventListener('pointercancel', endDrag);
 
   // ---------- events ----------
   el.newBtn.addEventListener('click', createNote);

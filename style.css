@@ -43,9 +43,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 .search:focus { border-color: var(--accent); }
 .note-list { list-style: none; margin: 0; padding: 0 8px; overflow-y: auto; flex: 1; }
 .note-list li {
-  padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
-  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 10px 8px 4px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
+  display: flex; align-items: center; gap: 4px;
 }
+.note-list .c { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.note-list .h {
+  flex: 0 0 auto; width: 22px; text-align: center; color: var(--muted); opacity: .55; font-size: 13px;
+  letter-spacing: -2px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; padding: 6px 0;
+}
+.note-list li:hover .h { opacity: 1; }
+.note-list.filtered .h { visibility: hidden; }
+.note-list li.dragging { opacity: .75; background: var(--active); box-shadow: 0 6px 18px rgba(0,0,0,.25); cursor: grabbing; }
+.note-list li.dragging .h { cursor: grabbing; }
 .note-list li:hover { background: var(--hover); }
 .note-list li.active { background: var(--active); }
 .note-list .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

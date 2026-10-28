@@ -19,3 +19,4 @@ Token 只會存在瀏覽器的 localStorage。
 
 - Ctrl+S 立即同步到 GitHub
 - Ctrl+E 切換 Markdown 預覽
+- 拖曳清單左側的 ⋮⋮ 把手可自訂筆記順序（搜尋中不可拖曳）
