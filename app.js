@@ -250,41 +250,73 @@
     renderEditor();
   }
 
-  // ---------- 拖曳排序（滑鼠與觸控皆用 Pointer Events） ----------
+  // ---------- 拖曳排序（Pointer Events；拖曳項目浮起跟隨指標，其他項目以 FLIP 動畫讓位） ----------
   let drag = null;
+  const listItems = () => [...el.list.querySelectorAll('li[data-id]')];
+  function positionDragged(clientY) {
+    // 用 offsetTop 取得排版位置（不受 transform 動畫影響）
+    const layoutTop = el.list.getBoundingClientRect().top + drag.li.offsetTop - el.list.scrollTop;
+    drag.ty = clientY - drag.grabOffset - layoutTop;
+    drag.li.style.transform = 'translateY(' + drag.ty + 'px) scale(1.03)';
+  }
+  function reorderDom(clientY) {
+    const others = listItems().filter((x) => x !== drag.li);
+    const visualCenter = clientY - drag.grabOffset + drag.h / 2;
+    let target = null;
+    for (const it of others) { const r = it.getBoundingClientRect(); if (visualCenter < r.top + r.height / 2) { target = it; break; } }
+    const nextNow = drag.li.nextElementSibling;
+    if (target === nextNow || (target === null && nextNow === null)) return; // 位置沒變
+    // FLIP：記錄 First（目前視覺位置）
+    const first = new Map(others.map((it) => [it, it.getBoundingClientRect().top]));
+    if (target) el.list.insertBefore(drag.li, target); else el.list.appendChild(drag.li);
+    for (const it of others) { it.style.transition = 'none'; it.style.transform = ''; }
+    const moving = [];
+    for (const it of others) {
+      const d = first.get(it) - it.getBoundingClientRect().top;
+      if (Math.abs(d) > 0.5) { it.style.transform = 'translateY(' + d + 'px)'; moving.push(it); }
+    }
+    void el.list.offsetHeight; // 強制 reflow，讓 Invert 生效
+    for (const it of others) it.style.transition = '';
+    for (const it of moving) it.style.transform = '';
+  }
   el.list.addEventListener('pointerdown', (e) => {
     const h = e.target.closest('.h'); if (!h) return;
     if (el.search.value.trim()) return; // 搜尋中不允許排序
     const li = h.closest('li[data-id]'); if (!li) return;
     e.preventDefault();
-    drag = { li, startY: e.clientY, moved: false, pointerId: e.pointerId };
+    const r = li.getBoundingClientRect();
+    drag = { li, startY: e.clientY, grabOffset: e.clientY - r.top, h: r.height, ty: 0, moved: false, pointerId: e.pointerId };
     try { li.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
   el.list.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.pointerId) return;
     if (!drag.moved) {
       if (Math.abs(e.clientY - drag.startY) < 4) return;
-      drag.moved = true; drag.li.classList.add('dragging');
+      drag.moved = true;
+      drag.li.classList.add('dragging', 'lifting');   // 浮起：放大 + 陰影
+      setTimeout(() => { if (drag && drag.li) drag.li.classList.remove('lifting'); }, 140);
     }
-    const others = [...el.list.querySelectorAll('li[data-id]')].filter((x) => x !== drag.li);
-    let placed = false;
-    for (const it of others) {
-      const r = it.getBoundingClientRect();
-      if (e.clientY < r.top + r.height / 2) { el.list.insertBefore(drag.li, it); placed = true; break; }
-    }
-    if (!placed) el.list.appendChild(drag.li);
     const lr = el.list.getBoundingClientRect();
     if (e.clientY < lr.top + 36) el.list.scrollTop -= 10; else if (e.clientY > lr.bottom - 36) el.list.scrollTop += 10;
+    positionDragged(e.clientY);
+    reorderDom(e.clientY);
+    positionDragged(e.clientY); // DOM 換位後排版位置改變，重算位移讓它留在指標下
   });
   const endDrag = (e) => {
     if (!drag || e.pointerId !== drag.pointerId) return;
-    drag.li.classList.remove('dragging');
-    if (drag.moved) {
-      [...el.list.querySelectorAll('li[data-id]')].forEach((li, i) => { const n = state.notes.find((x) => x.id === li.dataset.id); if (n) n.order = i; });
-      state.suppressClick = true; setTimeout(() => { state.suppressClick = false; }, 0);
-      schedulePush();
-    }
-    drag = null;
+    const d = drag; drag = null;
+    if (!d.moved) return;
+    state.suppressClick = true; setTimeout(() => { state.suppressClick = false; }, 0);
+    listItems().forEach((li, i) => { const n = state.notes.find((x) => x.id === li.dataset.id); if (n) n.order = i; });
+    // 落下：滑回定位、縮回原大小，動畫結束後重繪清單
+    d.li.classList.remove('lifting'); d.li.classList.add('settling');
+    d.li.style.transform = 'translateY(0) scale(1)';
+    setTimeout(() => {
+      d.li.classList.remove('dragging', 'settling'); d.li.style.transform = '';
+      for (const it of listItems()) { it.style.transform = ''; it.style.transition = ''; }
+      renderList();
+    }, 200);
+    schedulePush();
   };
   el.list.addEventListener('pointerup', endDrag);
   el.list.addEventListener('pointercancel', endDrag);

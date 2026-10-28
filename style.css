@@ -41,7 +41,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
   background: var(--bg); color: var(--text); font: inherit; outline: none;
 }
 .search:focus { border-color: var(--accent); }
-.note-list { list-style: none; margin: 0; padding: 0 8px; overflow-y: auto; flex: 1; }
+.note-list { list-style: none; margin: 0; padding: 0 8px; overflow-y: auto; flex: 1; position: relative; }
 .note-list li {
   padding: 8px 10px 8px 4px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
   display: flex; align-items: center; gap: 4px;
@@ -53,8 +53,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 }
 .note-list li:hover .h { opacity: 1; }
 .note-list.filtered .h { visibility: hidden; }
-.note-list li.dragging { opacity: .75; background: var(--active); box-shadow: 0 6px 18px rgba(0,0,0,.25); cursor: grabbing; }
-.note-list li.dragging .h { cursor: grabbing; }
+.note-list li:not(.dragging) { transition: transform .18s cubic-bezier(.2,.8,.2,1); }
+.note-list li.dragging {
+  position: relative; z-index: 5; background: var(--panel); cursor: grabbing;
+  box-shadow: 0 10px 28px rgba(0,0,0,.30), 0 0 0 1px var(--border);
+  transition: box-shadow .14s ease;
+}
+.note-list li.dragging .h { cursor: grabbing; opacity: 1; }
+.note-list li.lifting { transition: transform .14s cubic-bezier(.2,.8,.2,1), box-shadow .14s ease; }
+.note-list li.settling { transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease; box-shadow: none; }
 .note-list li:hover { background: var(--hover); }
 .note-list li.active { background: var(--active); }
 .note-list .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
