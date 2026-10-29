@@ -6,6 +6,9 @@
 <title>我的記事本</title>
 <meta name="description" content="儲存在 GitHub 私人倉庫中的個人記事本">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=LXGW+WenKai+TC&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,6 +30,7 @@
     <div class="editor-bar">
       <button class="icon-btn only-mobile" id="backBtn" title="返回清單">←</button>
       <input type="text" id="title" class="title-input" placeholder="標題">
+      <button class="icon-btn" id="styleBtn" title="字體與顏色">Aa</button>
       <button class="icon-btn" id="previewBtn" title="預覽 Markdown">👁</button>
       <button class="icon-btn danger" id="deleteBtn" title="刪除此筆記">🗑</button>
     </div>
@@ -35,6 +39,36 @@
     <div class="editor-foot">
       <span id="meta"></span>
       <span id="count"></span>
+    </div>
+    <div class="style-panel hidden" id="stylePanel">
+      <label>字體
+        <select id="fontSel">
+          <option value="system">系統預設</option>
+          <option value="noto-sans">思源黑體</option>
+          <option value="noto-serif">思源宋體</option>
+          <option value="maru">圓體</option>
+          <option value="wenkai">霞鶩文楷（手寫感）</option>
+          <option value="mono">等寬字體</option>
+        </select>
+      </label>
+      <label><span>字級 <span id="sizeVal">16</span> px</span>
+        <input type="range" id="sizeRange" min="12" max="28" step="1" value="16">
+      </label>
+      <label>文字顏色
+        <span class="swatches" id="swatches">
+          <button type="button" class="sw default" data-color="" title="預設"></button>
+          <button type="button" class="sw" data-color="#e11d48" style="background:#e11d48" title="紅"></button>
+          <button type="button" class="sw" data-color="#ea580c" style="background:#ea580c" title="橙"></button>
+          <button type="button" class="sw" data-color="#ca8a04" style="background:#ca8a04" title="黃"></button>
+          <button type="button" class="sw" data-color="#16a34a" style="background:#16a34a" title="綠"></button>
+          <button type="button" class="sw" data-color="#2563eb" style="background:#2563eb" title="藍"></button>
+          <button type="button" class="sw" data-color="#7c3aed" style="background:#7c3aed" title="紫"></button>
+          <input type="color" id="colorPick" value="#2563eb" title="自訂顏色">
+        </span>
+      </label>
+      <div class="style-foot">
+        <button type="button" class="btn" id="styleReset">恢復預設</button>
+      </div>
     </div>
     <div class="empty" id="empty">
       <p>選擇左側的筆記，或建立一則新筆記。</p>

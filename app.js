@@ -321,6 +321,40 @@
   el.list.addEventListener('pointerup', endDrag);
   el.list.addEventListener('pointercancel', endDrag);
 
+  // ---------- 字體 / 字級 / 顏色（存在此瀏覽器） ----------
+  const FONTS = {
+    system: '',
+    'noto-sans': '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
+    'noto-serif': '"Noto Serif TC", "Songti TC", "PMingLiU", serif',
+    maru: '"Zen Maru Gothic", "Noto Sans TC", sans-serif',
+    wenkai: '"LXGW WenKai TC", "Noto Serif TC", serif',
+    mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans TC", monospace',
+  };
+  const STYLE_DEFAULT = { font: 'system', size: 16, color: '' };
+  const styleEl = { btn: $('styleBtn'), panel: $('stylePanel'), font: $('fontSel'), size: $('sizeRange'), sizeVal: $('sizeVal'), swatches: $('swatches'), pick: $('colorPick'), reset: $('styleReset') };
+  let noteStyle = { ...STYLE_DEFAULT };
+  try { noteStyle = { ...STYLE_DEFAULT, ...JSON.parse(lsGet('np.style', '{}')) }; } catch (e) { /* ignore */ }
+  function applyStyle() {
+    const root = document.documentElement.style;
+    if (FONTS[noteStyle.font]) root.setProperty('--note-font', FONTS[noteStyle.font]); else root.removeProperty('--note-font');
+    root.setProperty('--note-size', noteStyle.size + 'px');
+    if (noteStyle.color) root.setProperty('--note-color', noteStyle.color); else root.removeProperty('--note-color');
+    styleEl.font.value = noteStyle.font in FONTS ? noteStyle.font : 'system';
+    styleEl.size.value = noteStyle.size; styleEl.sizeVal.textContent = noteStyle.size;
+    for (const b of styleEl.swatches.querySelectorAll('.sw')) b.classList.toggle('on', b.dataset.color === noteStyle.color);
+    if (noteStyle.color) styleEl.pick.value = noteStyle.color;
+    lsSet('np.style', JSON.stringify(noteStyle));
+  }
+  styleEl.btn.addEventListener('click', (e) => { e.stopPropagation(); styleEl.panel.classList.toggle('hidden'); styleEl.btn.classList.toggle('on', !styleEl.panel.classList.contains('hidden')); });
+  styleEl.panel.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', () => { styleEl.panel.classList.add('hidden'); styleEl.btn.classList.remove('on'); });
+  styleEl.font.addEventListener('change', () => { noteStyle.font = styleEl.font.value; applyStyle(); });
+  styleEl.size.addEventListener('input', () => { noteStyle.size = Number(styleEl.size.value); applyStyle(); });
+  styleEl.swatches.addEventListener('click', (e) => { const b = e.target.closest('.sw'); if (!b) return; noteStyle.color = b.dataset.color; applyStyle(); });
+  styleEl.pick.addEventListener('input', () => { noteStyle.color = styleEl.pick.value; applyStyle(); });
+  styleEl.reset.addEventListener('click', () => { noteStyle = { ...STYLE_DEFAULT }; applyStyle(); });
+  applyStyle();
+
   // ---------- events ----------
   el.newBtn.addEventListener('click', createNote);
   el.search.addEventListener('input', renderList);
