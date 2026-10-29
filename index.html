@@ -30,12 +30,57 @@
     <div class="editor-bar">
       <button class="icon-btn only-mobile" id="backBtn" title="返回清單">←</button>
       <input type="text" id="title" class="title-input" placeholder="標題">
-      <button class="icon-btn" id="styleBtn" title="字體與顏色">Aa</button>
-      <button class="icon-btn" id="previewBtn" title="預覽 Markdown">👁</button>
+      <button class="icon-btn" id="styleBtn" title="整篇字體與顏色">Aa</button>
       <button class="icon-btn danger" id="deleteBtn" title="刪除此筆記">🗑</button>
     </div>
-    <textarea id="body" class="body-input" placeholder="在這裡輸入內容…支援 Markdown" spellcheck="false"></textarea>
-    <div id="preview" class="preview hidden"></div>
+    <div class="fmt-bar" id="fmtBar">
+      <button type="button" class="fmt" data-cmd="bold" title="粗體 (Ctrl+B)"><b>B</b></button>
+      <button type="button" class="fmt" data-cmd="italic" title="斜體 (Ctrl+I)"><i>I</i></button>
+      <button type="button" class="fmt" data-cmd="underline" title="底線 (Ctrl+U)"><u>U</u></button>
+      <button type="button" class="fmt" data-cmd="strikeThrough" title="刪除線"><s>S</s></button>
+      <span class="sep"></span>
+      <span class="fmt-color">
+        <button type="button" class="fmt" id="selColorBtn" title="選取文字的顏色">A<span class="bar" id="selColorBar"></span></button>
+        <div class="mini-pop hidden" id="selColorPop">
+          <span class="swatches">
+            <button type="button" class="sw" data-color="#e11d48" style="background:#e11d48" title="紅"></button>
+            <button type="button" class="sw" data-color="#ea580c" style="background:#ea580c" title="橙"></button>
+            <button type="button" class="sw" data-color="#ca8a04" style="background:#ca8a04" title="黃"></button>
+            <button type="button" class="sw" data-color="#16a34a" style="background:#16a34a" title="綠"></button>
+            <button type="button" class="sw" data-color="#2563eb" style="background:#2563eb" title="藍"></button>
+            <button type="button" class="sw" data-color="#7c3aed" style="background:#7c3aed" title="紫"></button>
+            <button type="button" class="sw" data-color="#db2777" style="background:#db2777" title="桃紅"></button>
+            <button type="button" class="sw" data-color="#6b7280" style="background:#6b7280" title="灰"></button>
+            <input type="color" id="selColorPick" value="#e11d48" title="自訂顏色">
+          </span>
+          <span class="hint">先選取文字，再點顏色</span>
+        </div>
+      </span>
+      <span class="fmt-color">
+        <button type="button" class="fmt" id="selHiBtn" title="選取文字的底色（螢光筆）">🖍</button>
+        <div class="mini-pop hidden" id="selHiPop">
+          <span class="swatches">
+            <button type="button" class="sw" data-color="#fde047" style="background:#fde047" title="黃"></button>
+            <button type="button" class="sw" data-color="#86efac" style="background:#86efac" title="綠"></button>
+            <button type="button" class="sw" data-color="#93c5fd" style="background:#93c5fd" title="藍"></button>
+            <button type="button" class="sw" data-color="#f9a8d4" style="background:#f9a8d4" title="粉"></button>
+            <button type="button" class="sw" data-color="#fdba74" style="background:#fdba74" title="橙"></button>
+            <button type="button" class="sw none" data-color="" title="移除底色">✕</button>
+          </span>
+        </div>
+      </span>
+      <select id="selFont" class="fmt-select" title="選取文字的字體">
+        <option value="">字體</option>
+        <option value="noto-sans">思源黑體</option>
+        <option value="noto-serif">思源宋體</option>
+        <option value="maru">圓體</option>
+        <option value="wenkai">霞鶩文楷</option>
+        <option value="mono">等寬</option>
+      </select>
+      <span class="sep"></span>
+      <button type="button" class="fmt" data-cmd="removeFormat" title="清除選取文字的格式">清除</button>
+    </div>
+    <div id="body" class="body-input" contenteditable="true" data-placeholder="在這裡輸入內容…" spellcheck="false"></div>
     <div class="editor-foot">
       <span id="meta"></span>
       <span id="count"></span>

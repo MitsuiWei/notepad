@@ -6,7 +6,7 @@
   const $ = (id) => document.getElementById(id);
   const el = {
     app: document.querySelector('.app'), list: $('noteList'), search: $('search'), newBtn: $('newBtn'),
-    title: $('title'), body: $('body'), preview: $('preview'), previewBtn: $('previewBtn'),
+    title: $('title'), body: $('body'),
     deleteBtn: $('deleteBtn'), backBtn: $('backBtn'), meta: $('meta'), count: $('count'), empty: $('empty'),
     status: $('status'), statusText: $('statusText'), settings: $('settings'), settingsBtn: $('settingsBtn'),
     token: $('token'), testBtn: $('testBtn'), testResult: $('testResult'), clearTokenBtn: $('clearTokenBtn'),
@@ -14,7 +14,7 @@
   };
   const state = {
     notes: [], sha: null, currentId: null, token: '', dirty: false, deletedIds: [],
-    previewing: false, pushTimer: null, pushing: false, pushQueued: false,
+    pushTimer: null, pushing: false, pushQueued: false,
   };
 
   // ---------- helpers ----------
@@ -145,10 +145,52 @@
     return true;
   }
 
+  // ---------- 富文本：HTML 清理與純文字擷取 ----------
+  const ALLOWED_TAGS = new Set(['P', 'DIV', 'BR', 'SPAN', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'DEL', 'STRIKE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'CODE', 'A', 'FONT', 'HR', 'INPUT', 'SUB', 'SUP', 'MARK']);
+  const ALLOWED_CSS = new Set(['color', 'background-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line']);
+  function cleanStyle(v) {
+    return v.split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
+      const i = d.indexOf(':'); if (i < 0) return null;
+      const k = d.slice(0, i).trim().toLowerCase(), val = d.slice(i + 1).trim();
+      if (!ALLOWED_CSS.has(k) || /url\(|expression|javascript/i.test(val) || !/^[\w\s#,.%"'()\-]+$/.test(val)) return null;
+      return k + ': ' + val;
+    }).filter(Boolean).join('; ');
+  }
+  function cleanNode(node) {
+    for (const c of [...node.childNodes]) {
+      if (c.nodeType === 3) continue;
+      if (c.nodeType !== 1) { c.remove(); continue; }
+      if (c.tagName === 'SCRIPT' || c.tagName === 'STYLE' || c.tagName === 'IFRAME' || c.tagName === 'OBJECT') { c.remove(); continue; }
+      if (!ALLOWED_TAGS.has(c.tagName)) { cleanNode(c); c.replaceWith(...c.childNodes); continue; }
+      for (const a of [...c.attributes]) {
+        const n = a.name.toLowerCase();
+        if (n === 'style') { const cs = cleanStyle(a.value); if (cs) c.setAttribute('style', cs); else c.removeAttribute('style'); }
+        else if (n === 'href' && c.tagName === 'A') { if (/^https?:\/\//i.test(a.value)) { c.setAttribute('target', '_blank'); c.setAttribute('rel', 'noopener'); } else c.removeAttribute('href'); }
+        else if (c.tagName === 'FONT' && (n === 'color' || n === 'face' || n === 'size')) { /* keep */ }
+        else if (c.tagName === 'INPUT' && (n === 'type' || n === 'checked' || n === 'disabled')) { /* keep */ }
+        else if (c.tagName === 'A' && (n === 'target' || n === 'rel')) { /* set with href */ }
+        else c.removeAttribute(n);
+      }
+      if (c.tagName === 'INPUT' && c.getAttribute('type') !== 'checkbox') { c.remove(); continue; }
+      cleanNode(c);
+    }
+  }
+  function sanitize(html) {
+    const doc = new DOMParser().parseFromString('<!doctype html><body>' + (html || ''), 'text/html');
+    cleanNode(doc.body);
+    return doc.body.innerHTML;
+  }
+  const isHtml = (n) => n.format === 'html';
+  const noteHtml = (n) => (isHtml(n) ? sanitize(n.body) : md(n.body || ''));
+  const noteText = (n) => {
+    if (!isHtml(n)) return n.body || '';
+    const d = document.createElement('div'); d.innerHTML = sanitize(n.body); return d.innerText || d.textContent || '';
+  };
+
   // ---------- rendering ----------
   function renderList() {
     const q = el.search.value.trim().toLowerCase();
-    const items = sorted().filter((n) => !q || (n.title + '\n' + n.body).toLowerCase().includes(q));
+    const items = sorted().filter((n) => !q || (n.title + '\n' + noteText(n)).toLowerCase().includes(q));
     el.list.classList.toggle('filtered', !!q);
     el.list.innerHTML = '';
     if (!items.length) {
@@ -160,7 +202,7 @@
       const li = document.createElement('li');
       li.dataset.id = n.id;
       if (n.id === state.currentId) li.classList.add('active');
-      const snippet = (n.body || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      const snippet = noteText(n).replace(/\s+/g, ' ').trim().slice(0, 60);
       li.innerHTML = '<span class="h" title="拖曳排序">⋮⋮</span><span class="c"><span class="t">' + esc(n.title || '（無標題）') + '</span><span class="s">' + esc(fmt(n.updated)) + (snippet ? ' · ' + esc(snippet) : '') + '</span></span>';
       li.addEventListener('click', () => { if (!state.suppressClick) open(n.id); });
       el.list.appendChild(li);
@@ -168,13 +210,12 @@
   }
   function renderEditor() {
     const n = current();
-    if (!n) { el.empty.classList.remove('hidden'); el.app.classList.remove('show-editor'); return; }
+    if (!n) { el.empty.classList.remove('hidden'); el.app.classList.remove('show-editor'); state.renderedId = null; el.body.innerHTML = ''; return; }
     el.empty.classList.add('hidden');
     if (document.activeElement !== el.title) el.title.value = n.title;
-    if (document.activeElement !== el.body) el.body.value = n.body;
+    if (state.renderedId !== n.id) { el.body.innerHTML = noteHtml(n); state.renderedId = n.id; }
     el.meta.textContent = '建立 ' + fmt(n.created) + ' · 更新 ' + fmt(n.updated);
-    el.count.textContent = n.body.length + ' 字';
-    if (state.previewing) el.preview.innerHTML = md(n.body);
+    el.count.textContent = noteText(n).length + ' 字';
   }
   function open(id) {
     state.currentId = id; lsSet(LS.current, id);
@@ -242,12 +283,9 @@
     renderList(); renderEditor();
     schedulePush(300);
   }
-  function togglePreview(force) {
-    state.previewing = typeof force === 'boolean' ? force : !state.previewing;
-    el.previewBtn.classList.toggle('on', state.previewing);
-    el.body.classList.toggle('hidden', state.previewing);
-    el.preview.classList.toggle('hidden', !state.previewing);
-    renderEditor();
+  function readBody() {
+    if (el.body.innerHTML === '<br>' || el.body.innerHTML === '<div><br></div>' || el.body.innerHTML === '<p><br></p>') el.body.innerHTML = '';
+    return sanitize(el.body.innerHTML);
   }
 
   // ---------- 拖曳排序（Pointer Events；拖曳項目浮起跟隨指標，其他項目以 FLIP 動畫讓位） ----------
@@ -359,17 +397,36 @@
   el.newBtn.addEventListener('click', createNote);
   el.search.addEventListener('input', renderList);
   el.title.addEventListener('input', () => editCurrent({ title: el.title.value }));
-  el.body.addEventListener('input', () => editCurrent({ body: el.body.value }));
+  el.body.addEventListener('input', () => editCurrent({ body: readBody(), format: 'html' }));
   el.body.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const s = el.body.selectionStart, t = el.body.selectionEnd;
-      el.body.setRangeText('  ', s, t, 'end');
-      editCurrent({ body: el.body.value });
-    }
+    if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertHTML', false, '&nbsp;&nbsp;'); }
   });
+  el.body.addEventListener('paste', (e) => {
+    const html = e.clipboardData && e.clipboardData.getData('text/html');
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (!html && !text) return;
+    e.preventDefault();
+    if (html) document.execCommand('insertHTML', false, sanitize(html));
+    else document.execCommand('insertText', false, text);
+  });
+  // 格式工具列：mousedown 阻止預設行為，避免選取範圍消失
+  const fmtBar = $('fmtBar');
+  fmtBar.addEventListener('mousedown', (e) => { if (e.target.closest('button, .swatches')) e.preventDefault(); });
+  const exec = (cmd, val) => { el.body.focus(); document.execCommand(cmd, false, val); editCurrent({ body: readBody(), format: 'html' }); };
+  for (const b of fmtBar.querySelectorAll('button[data-cmd]')) b.addEventListener('click', () => exec(b.dataset.cmd));
+  const closePops = () => { for (const pop of fmtBar.querySelectorAll('.mini-pop')) pop.classList.add('hidden'); };
+  const selColorPop = $('selColorPop'), selHiPop = $('selHiPop'), selColorBar = $('selColorBar');
+  let lastColor = lsGet('np.lastColor', '#e11d48'); selColorBar.style.background = lastColor;
+  $('selColorBtn').addEventListener('click', (e) => { e.stopPropagation(); const was = selColorPop.classList.contains('hidden'); closePops(); if (was) selColorPop.classList.remove('hidden'); });
+  $('selHiBtn').addEventListener('click', (e) => { e.stopPropagation(); const was = selHiPop.classList.contains('hidden'); closePops(); if (was) selHiPop.classList.remove('hidden'); });
+  const applyColor = (color) => { lastColor = color; lsSet('np.lastColor', color); selColorBar.style.background = color; closePops(); exec('foreColor', color); };
+  selColorPop.addEventListener('click', (e) => { e.stopPropagation(); const b = e.target.closest('.sw'); if (b) applyColor(b.dataset.color); });
+  $('selColorPick').addEventListener('input', (e) => { e.stopPropagation(); applyColor(e.target.value); });
+  $('selColorPick').addEventListener('click', (e) => e.stopPropagation());
+  selHiPop.addEventListener('click', (e) => { e.stopPropagation(); const b = e.target.closest('.sw'); if (!b) return; closePops(); exec('hiliteColor', b.dataset.color || 'transparent'); });
+  document.addEventListener('click', closePops);
+  $('selFont').addEventListener('change', (e) => { const v = e.target.value; e.target.value = ''; if (v && FONTS[v]) exec('fontName', FONTS[v]); });
   el.deleteBtn.addEventListener('click', deleteCurrent);
-  el.previewBtn.addEventListener('click', () => togglePreview());
   el.backBtn.addEventListener('click', () => { el.app.classList.remove('show-editor'); });
   el.settingsBtn.addEventListener('click', () => { el.token.value = state.token; el.testResult.textContent = ''; el.settings.returnValue = ''; el.settings.showModal(); });
   el.testBtn.addEventListener('click', async () => {
@@ -392,14 +449,13 @@
     if (!mod) return;
     const k = e.key.toLowerCase();
     if (k === 's') { e.preventDefault(); clearTimeout(state.pushTimer); pushRemote(); }
-    if (k === 'e') { e.preventDefault(); togglePreview(); }
   });
   window.addEventListener('beforeunload', (e) => { if (state.dirty && state.token) { e.preventDefault(); e.returnValue = ''; } });
   window.addEventListener('online', () => { if (state.dirty) schedulePush(500); });
 
   // ---------- boot ----------
   async function boot(first) {
-    if (first) loadLocal();
+    if (first) { loadLocal(); try { document.execCommand('styleWithCSS', false, true); document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) { /* ignore */ } }
     $('repoName').textContent = CFG.owner + '/' + CFG.repo;
     $('repoName2').textContent = CFG.owner + '/' + CFG.repo;
     renderList(); renderEditor();
