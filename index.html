@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=LXGW+WenKai+TC&display=swap">
 <link rel="stylesheet" href="style.css">
+<script>try{var t=localStorage.getItem("np.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body>
 <div class="app">
@@ -22,7 +23,10 @@
     <ul class="note-list" id="noteList"></ul>
     <div class="sidebar-foot">
       <span class="status" id="status"><span class="dot"></span><span id="statusText">載入中…</span></span>
-      <button class="icon-btn" id="settingsBtn" title="設定 GitHub 同步">⚙️</button>
+      <span class="foot-btns">
+        <button class="icon-btn" id="themeBtn" title="外觀：跟隨系統">🌓</button>
+        <button class="icon-btn" id="settingsBtn" title="設定 GitHub 同步">⚙️</button>
+      </span>
     </div>
   </aside>
 

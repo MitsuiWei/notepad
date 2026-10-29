@@ -393,6 +393,21 @@
   styleEl.reset.addEventListener('click', () => { noteStyle = { ...STYLE_DEFAULT }; applyStyle(); });
   applyStyle();
 
+  // ---------- 外觀：自動 / 深色 / 淺色 ----------
+  const THEMES = ['auto', 'dark', 'light'];
+  const THEME_LABEL = { auto: '跟隨系統', dark: '深色', light: '淺色' };
+  const THEME_ICON = { auto: '🌓', dark: '🌙', light: '☀️' };
+  const themeBtn = $('themeBtn');
+  let theme = lsGet('np.theme', 'auto'); if (!THEMES.includes(theme)) theme = 'auto';
+  function applyTheme() {
+    if (theme === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme);
+    themeBtn.textContent = THEME_ICON[theme];
+    themeBtn.title = '外觀：' + THEME_LABEL[theme] + '（點擊切換）';
+    lsSet('np.theme', theme);
+  }
+  themeBtn.addEventListener('click', () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]; applyTheme(); });
+  applyTheme();
+
   // ---------- events ----------
   el.newBtn.addEventListener('click', createNote);
   el.search.addEventListener('input', renderList);

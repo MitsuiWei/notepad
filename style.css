@@ -69,6 +69,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 .note-list .none { color: var(--muted); text-align: center; padding: 30px 10px; cursor: default; }
 .sidebar-foot { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
 .status { display: inline-flex; align-items: center; gap: 7px; }
+.foot-btns { display: inline-flex; gap: 2px; }
+html { color-scheme: light; }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { color-scheme: dark; } }
+html[data-theme="dark"] { color-scheme: dark; }
+body { transition: background-color .2s, color .2s; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .status.ok .dot { background: var(--ok); }
 .status.warn .dot { background: var(--warn); }
